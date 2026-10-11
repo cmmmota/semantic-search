@@ -1,0 +1,13 @@
+# Copy to eval/queries.yaml (gitignored) and fill with real queries.
+# `expect` lists every acceptable answer as <source>:<source_id>; a query
+# scores a hit at the rank of the first of them to appear.
+# Write the labels BEFORE running either system, so neither gets tuned to them.
+- query: how do I clean the dryer's lint filter
+  expect: ["paperless:308", "obsidian:Appliances/Dryer.md"]
+  tags: [en-pt, manual]
+- query: fatura da água de janeiro
+  expect: ["paperless:150"]
+  tags: [pt]
+- query: INV-2024-00123
+  expect: ["paperless:508"]
+  tags: [exact]

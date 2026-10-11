@@ -1,0 +1,60 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":dependencyDashboard",
+    ":semanticCommits"
+  ],
+  "dependencyDashboardTitle": "Renovate Dashboard \ud83e\udd16",
+  "timezone": "Europe/Lisbon",
+  "rebaseWhen": "conflicted",
+  "automergeSchedule": [
+    "* 9-16 * * 1-4"
+  ],
+  "platformAutomerge": false,
+  "packageRules": [
+    {
+      "description": "Auto merge minor, patch, pin, and digest updates",
+      "matchUpdateTypes": [
+        "minor",
+        "patch",
+        "pin",
+        "digest"
+      ],
+      "automerge": true,
+      "ignoreTests": true
+    },
+    {
+      "description": "Auto merge Github Actions",
+      "matchManagers": [
+        "github-actions"
+      ],
+      "matchUpdateTypes": [
+        "minor",
+        "patch",
+        "digest"
+      ],
+      "automerge": true,
+      "ignoreTests": true
+    },
+    {
+      "description": "Auto merge Docker base image updates",
+      "matchManagers": [
+        "dockerfile"
+      ],
+      "automerge": true,
+      "ignoreTests": true
+    },
+    {
+      "description": "Group Python dependencies",
+      "matchManagers": [
+        "pep621"
+      ],
+      "groupName": "python dependencies"
+    }
+  ],
+  "lockFileMaintenance": {
+    "enabled": true,
+    "automerge": true
+  }
+}

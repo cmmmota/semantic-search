@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+dist/
+# The golden set holds real document ids and personal questions. This repo is
+# public; keep it local (or in a private store) and never commit it.
+eval/queries.yaml

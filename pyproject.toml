@@ -1,0 +1,42 @@
+[project]
+name = "semantic-search"
+version = "0.1.0"
+description = "Hybrid semantic search over paperless-ngx and an Obsidian vault, served over REST and MCP"
+authors = [
+    { name = "cmmmota", email = "cmmmota@gmail.com" }
+]
+requires-python = ">=3.14"
+dependencies = [
+    "httpx>=0.28.1",
+    "mcp>=2.3.0",
+    "pgvector>=0.5.1",
+    "prometheus-client>=0.26.0",
+    "psycopg-pool>=3.3.3",
+    "psycopg[binary]>=3.3.6",
+    "pyyaml>=6.0.3",
+    "starlette>=1.7.0",
+    "uvicorn>=0.54.0",
+]
+
+[project.scripts]
+semantic-search = "semantic_search:main"
+
+[build-system]
+requires = ["uv_build>=0.11.21,<0.12.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "ruff>=0.17.0",
+]
+
+[tool.ruff]
+line-length = 110
+target-version = "py314"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
