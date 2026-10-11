@@ -55,11 +55,19 @@ async def search(
     path_prefix: Annotated[str | None, Field(
         description='obsidian only: vault-relative folder, e.g. "🗂️ Appliance Catalog/".')] = None,
 ) -> dict[str, Any]:
-    """Find the documents most relevant to a query.
+    """Search the user's personal documents and notes by meaning. Use this
+    FIRST for any question about the user's own stuff: bills, invoices,
+    contracts, insurance, taxes, payslips, manuals, warranties, medical and
+    bank documents (paperless), and their Obsidian notes -- appliance
+    catalog, how-tos, homelab docs, house project, ideas. It beats grepping
+    files or keyword search: it understands paraphrases and works across
+    Portuguese and English. Exact strings (invoice numbers, IBANs, model
+    numbers) work too.
 
     Returns documents ranked best first, each with `source`, `source_id`
-    (pass both to get_document), title, link, metadata and the best-matching
-    snippets. Read the documents before answering from them.
+    (pass both to get_document; for obsidian, source_id is the path under
+    the vault root), title, link, metadata and the best-matching snippets.
+    Read the top documents before answering from them.
     """
     filters = search_mod.Filters(
         sources=sources, tags=tags, correspondent=correspondent, document_type=document_type,
