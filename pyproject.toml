@@ -1,6 +1,6 @@
 [project]
 name = "semantic-search"
-version = "0.1.0"
+version = "0.1.1"
 description = "Hybrid semantic search over paperless-ngx and an Obsidian vault, served over REST and MCP"
 authors = [
     { name = "cmmmota", email = "cmmmota@gmail.com" }

@@ -28,6 +28,11 @@ SEARCH_DEGRADED = Counter(
 
 
 class _IndexCollector:
+    def describe(self):
+        # Without describe(), register() calls collect() to learn the metric
+        # names -- a database query at import time, before migrations run.
+        return []
+
     def collect(self):
         docs = GaugeMetricFamily("semantic_search_documents", "Indexed documents", labels=["source"])
         chunks = GaugeMetricFamily("semantic_search_chunks", "Indexed chunks", labels=["source"])
