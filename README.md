@@ -21,6 +21,11 @@ query ─▶ bge-m3 ─▶ pgvector top-50 ───────┐
   question finds Portuguese documents). The keyword leg catches exact tokens such as invoice
   numbers, IBANs and model numbers. It uses the `simple` configuration with accent folding, and
   weights terms by BM25's IDF because Postgres' `ts_rank` has no notion of term rarity.
+- **"The latest X" (`sort=newest`).** Relevance knows nothing about dates, so "my last
+  electricity bill" ranks bills from any year. With `sort=newest`, relevance only decides which
+  documents qualify, and they are ordered by paperless' `created` date. The net is wider for
+  this: 4× the leg candidates, one best chunk per document, and up to `NEWEST_POOL` documents
+  reranked. A document qualifies if its reranker score is within `NEWEST_MARGIN` of the best.
 - **Degraded mode.** Both models run on llama.cpp servers. If the embedder is down, search
   falls back to keywords only; if the reranker is down, the fused order is returned. In both
   cases the response's `degraded` field says so.
@@ -45,7 +50,8 @@ Obsidian notes are chunked by heading. Each chunk is embedded with its heading t
 
 **MCP** (streamable HTTP, stateless, at `/mcp`), with three tools:
 
-- `search(query, sources?, k?, tags?, correspondent?, document_type?, created_after?, created_before?, path_prefix?)`
+- `search(query, sources?, k?, tags?, correspondent?, document_type?, created_after?, created_before?, path_prefix?, sort?)`. It returns one
+  snippet per document, trimmed to 500 characters, to spare the agent's context.
 - `get_document(source, source_id, offset?, limit?)`
 - `status()`: per source, the document count, last successful sync and last run outcome.
 
@@ -53,7 +59,7 @@ Obsidian notes are chunked by heading. Each chunk is embedded with its heading t
 
 | Method | Path | Auth |
 |---|---|---|
-| GET | `/search?q=&k=&source=&tag=&correspondent=&document_type=&created_after=&created_before=&path_prefix=` | `API_TOKEN` |
+| GET | `/search?q=&k=&sort=&source=&tag=&correspondent=&document_type=&created_after=&created_before=&path_prefix=` | `API_TOKEN` |
 | GET | `/documents/{source}/{source_id}?offset=&limit=` | `API_TOKEN` |
 | GET | `/status` | `API_TOKEN` |
 | POST | `/hooks/paperless` | `WEBHOOK_TOKEN` |
@@ -85,6 +91,7 @@ semantic-search eval eval/queries.yaml [--both] [-v]
 | `CHUNK_SIZE` / `CHUNK_OVERLAP` / `CHUNK_MIN` | `1000` / `100` / `200` (characters) | sync |
 | `EMBED_BATCH` | `8` | sync |
 | `LEG_K` / `RERANK_K` / `RRF_K` | `50` / `30` / `60` | search |
+| `NEWEST_POOL` / `NEWEST_MARGIN` | `50` / `4.0` | search with `sort=newest` |
 | `MAX_DELETE_RATIO` | `0.25` | sync |
 | `API_TOKEN` | required | serve |
 | `WEBHOOK_TOKEN` | unset disables the webhook | serve |

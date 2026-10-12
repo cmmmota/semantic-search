@@ -2,7 +2,7 @@
 
   GET  /healthz                     liveness/readiness, unauthenticated
   GET  /metrics                     Prometheus, unauthenticated
-  GET  /search?q=&k=&source=...     bearer API_TOKEN
+  GET  /search?q=&k=&sort=&source=...     bearer API_TOKEN
   GET  /documents/{source}/{id}     bearer API_TOKEN
   GET  /status                      bearer API_TOKEN
   POST /mcp                         bearer API_TOKEN (MCP streamable HTTP)
@@ -123,7 +123,10 @@ def create_app() -> Starlette:
             path_prefix=p.get("path_prefix"),
         )
         k = min(max(int(p.get("k", "5")), 1), 50)
-        result = await run_in_threadpool(search_mod.search, q, k=k, filters=filters)
+        sort = p.get("sort", "relevance")
+        if sort not in ("relevance", "newest"):
+            return JSONResponse({"error": "sort must be relevance or newest"}, 400)
+        result = await run_in_threadpool(search_mod.search, q, k=k, filters=filters, sort=sort)
         return JSONResponse({"results": result.results, "degraded": result.degraded})
 
     async def document(request: Request):

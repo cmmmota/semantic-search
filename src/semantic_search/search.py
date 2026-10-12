@@ -147,12 +147,35 @@ def _keyword_leg(conn, query, where, params, k) -> list[int]:
     return [r["id"] for r in conn.execute(q, [*params, k])]
 
 
-def search(query: str, *, k: int = 5, filters: Filters | None = None, snippets: int = 2) -> Result:
+def search(
+    query: str,
+    *,
+    k: int = 5,
+    filters: Filters | None = None,
+    snippets: int = 2,
+    snippet_chars: int | None = None,
+    sort: str = "relevance",
+) -> Result:
+    """Rank documents for `query`.
+
+    sort="relevance" orders by the reranker. sort="newest" answers "the last
+    X": relevance only decides WHICH documents qualify, then they are ordered
+    by `created`, newest first (undated ones last). That needs a wider net --
+    a run of twenty monthly bills spreads thin across the chunk-level top 30,
+    and the newest is as likely as any to be missing -- so the legs pull
+    more, each document competes with its single best chunk, and the reranker
+    scores up to NEWEST_POOL documents. A document qualifies when it scores
+    within NEWEST_MARGIN of the best one.
+    """
+    if sort not in ("relevance", "newest"):
+        raise ValueError(f"sort must be 'relevance' or 'newest', not {sort!r}")
+    newest = sort == "newest"
     started = time.monotonic()
     s = settings()
     filters = filters or Filters()
     where, params = filters.where()
     degraded: list[str] = []
+    leg_k = s.leg_k * 4 if newest else s.leg_k
 
     qvec = None
     try:
@@ -163,8 +186,8 @@ def search(query: str, *, k: int = 5, filters: Filters | None = None, snippets: 
         SEARCH_DEGRADED.labels("embeddings").inc()
 
     with db.pool().connection() as conn, conn.transaction():
-        vector_ids = _vector_leg(conn, qvec, where, params, s.leg_k) if qvec else []
-        keyword_ids = _keyword_leg(conn, query, where, params, s.leg_k)
+        vector_ids = _vector_leg(conn, qvec, where, params, leg_k) if qvec else []
+        keyword_ids = _keyword_leg(conn, query, where, params, leg_k)
 
         hits: dict[int, Hit] = {}
         for leg, ids in (("vector_rank", vector_ids), ("keyword_rank", keyword_ids)):
@@ -172,8 +195,10 @@ def search(query: str, *, k: int = 5, filters: Filters | None = None, snippets: 
                 h = hits.setdefault(cid, Hit(cid, 0))
                 setattr(h, leg, rank)
                 h.rrf += 1.0 / (s.rrf_k + rank)
-        top = sorted(hits.values(), key=lambda h: h.rrf, reverse=True)[:s.rerank_k]
-        if not top:
+        fused = sorted(hits.values(), key=lambda h: h.rrf, reverse=True)
+        if not newest:
+            fused = fused[:s.rerank_k]
+        if not fused:
             SEARCH_SECONDS.observe(time.monotonic() - started)
             return Result([], "; ".join(degraded) or None)
 
@@ -183,12 +208,20 @@ def search(query: str, *, k: int = 5, filters: Filters | None = None, snippets: 
                 " d.source, d.source_id, d.title, d.uri, d.metadata"
                 " FROM chunks c JOIN documents d ON d.id = c.document_id"
                 " WHERE c.id = ANY(%s)",
-                ([h.chunk_id for h in top],),
+                ([h.chunk_id for h in fused],),
             )
         }
 
-    for h in top:
+    for h in fused:
         h.document_id = rows[h.chunk_id]["document_id"]
+    if newest:
+        # One candidate per document: its best fused chunk.
+        best: dict[int, Hit] = {}
+        for h in fused:
+            best.setdefault(h.document_id, h)
+        top = list(best.values())[:s.newest_pool]
+    else:
+        top = fused
 
     try:
         scores = llama.rerank(query, [_rerank_text(rows[h.chunk_id]) for h in top])
@@ -199,6 +232,17 @@ def search(query: str, *, k: int = 5, filters: Filters | None = None, snippets: 
         log.warning("reranker unavailable, using fused order: %s", e)
         degraded.append("reranker unavailable: results are not reranked")
         SEARCH_DEGRADED.labels("reranker").inc()
+
+    if newest:
+        if top[0].rerank is not None:
+            floor = top[0].rerank - s.newest_margin
+            top = [h for h in top if h.rerank >= floor]
+        else:
+            # No scores to judge relevance by: the fused top k qualify.
+            top = top[:k]
+        # Stable sort: equally dated (or undated) documents keep their
+        # relevance order. ISO dates compare correctly as strings.
+        top.sort(key=lambda h: rows[h.chunk_id]["metadata"].get("created") or "", reverse=True)
 
     # Group by document; a document ranks by its best chunk.
     docs: dict[int, dict] = {}
@@ -218,9 +262,12 @@ def search(query: str, *, k: int = 5, filters: Filters | None = None, snippets: 
                 "snippets": [],
             }
         if len(d["snippets"]) < snippets:
+            text = row["text"]
+            if snippet_chars and len(text) > snippet_chars:
+                text = text[:snippet_chars].rstrip() + "…"
             d["snippets"].append({
                 "section": row["heading_path"],
-                "text": row["text"],
+                "text": text,
                 "score": h.rerank if h.rerank is not None else h.rrf,
                 "vector_rank": h.vector_rank,
                 "keyword_rank": h.keyword_rank,

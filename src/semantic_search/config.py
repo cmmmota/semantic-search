@@ -41,6 +41,13 @@ class Settings:
     leg_k: int = field(default_factory=lambda: int(_env("LEG_K", "50")))
     rerank_k: int = field(default_factory=lambda: int(_env("RERANK_K", "30")))
     rrf_k: int = field(default_factory=lambda: int(_env("RRF_K", "60")))
+    # sort=newest: documents (one best chunk each) sent to the reranker, and
+    # how far below the best reranker score a document may fall and still
+    # count as relevant. bge-reranker scores are logits; on the paperless
+    # corpus matching bills sit within ~3 of the best, unrelated documents 5+
+    # below it.
+    newest_pool: int = field(default_factory=lambda: int(_env("NEWEST_POOL", "50")))
+    newest_margin: float = field(default_factory=lambda: float(_env("NEWEST_MARGIN", "4.0")))
 
     # Refuse a sync that would delete more than this share of a source's
     # documents: an empty or short listing from the source must not be
