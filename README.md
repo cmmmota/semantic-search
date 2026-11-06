@@ -122,7 +122,7 @@ Obsidian):
 ## Development
 
 ```
-docker run -d --name ss-pg -e POSTGRES_PASSWORD=pw -p 55432:5432 pgvector/pgvector:pg16
+docker run -d --name ss-pg -e POSTGRES_PASSWORD=pw -p 55432:5432 pgvector/pgvector:pg18
 docker exec ss-pg psql -U postgres -c "create database test"
 TEST_DATABASE_URL=postgresql://postgres:pw@localhost:55432/test uv run pytest
 uv run ruff check
