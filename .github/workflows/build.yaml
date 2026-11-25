@@ -27,9 +27,10 @@ jobs:
       - run: uv run ruff check
       - run: uv run pytest -q
 
+  # Pull requests build too, without pushing, so a Dockerfile or base-image
+  # change is built and smoke-tested (the Dockerfile's last step) before merge.
   build:
     needs: test
-    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -47,6 +48,7 @@ jobs:
       # Gitea's registry refuses the job token (it carries no package scope),
       # so pushes use ci-bot's write:package token, a BCDHome org secret.
       - uses: docker/login-action@v4
+        if: github.event_name != 'pull_request'
         with:
           registry: gitea.bcdhome.net
           username: ci-bot
@@ -65,6 +67,6 @@ jobs:
       - uses: docker/build-push-action@v7
         with:
           context: .
-          push: true
+          push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

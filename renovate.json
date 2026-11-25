@@ -23,8 +23,7 @@
         "pin",
         "digest"
       ],
-      "automerge": true,
-      "ignoreTests": true
+      "automerge": true
     },
     {
       "description": "Auto merge Github Actions",
@@ -36,16 +35,14 @@
         "patch",
         "digest"
       ],
-      "automerge": true,
-      "ignoreTests": true
+      "automerge": true
     },
     {
       "description": "Auto merge Docker base image updates",
       "matchManagers": [
         "dockerfile"
       ],
-      "automerge": true,
-      "ignoreTests": true
+      "automerge": true
     },
     {
       "description": "Group Python dependencies",
@@ -53,6 +50,17 @@
         "pep621"
       ],
       "groupName": "python dependencies"
+    },
+    {
+      "description": "Move the image's Python and .python-version in one PR, so the tests run on the Python the image ships",
+      "matchDatasources": [
+        "docker"
+      ],
+      "matchPackageNames": [
+        "python",
+        "docker.io/library/python"
+      ],
+      "groupName": "python"
     }
   ],
   "lockFileMaintenance": {

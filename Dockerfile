@@ -21,3 +21,22 @@ USER 65534:65534
 EXPOSE 8080
 ENTRYPOINT ["semantic-search"]
 CMD ["serve"]
+
+# Smoke test, run by every CI build (job pods have no Docker daemon, so the
+# image can't be started as a separate step): the entry point runs, every
+# module imports on this Python, the migrations shipped in the wheel and the
+# app builds. Nothing here touches the network or the database.
+RUN semantic-search --help >/dev/null && API_TOKEN=smoke python - <<'EOF'
+import importlib
+import importlib.resources
+import pkgutil
+
+import semantic_search as pkg
+from semantic_search.api import create_app
+
+for m in pkgutil.walk_packages(pkg.__path__, pkg.__name__ + "."):
+    importlib.import_module(m.name)
+migrations = importlib.resources.files(pkg).joinpath("migrations")
+assert any(f.name.endswith(".sql") for f in migrations.iterdir()), "no migrations in the image"
+create_app()
+EOF
